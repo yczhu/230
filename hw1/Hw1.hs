@@ -47,15 +47,31 @@ type Vertex = (Float, Float)
 --    built with the Polygon constructor.
 
 rectangle :: Side -> Side -> Shape
-rectangle = error "Define me!"
+rectangle x y = Polygon [(0.0, 0.0), (x, 0.0), (0.0, y), (x, y)]
 
 rtTriangle :: Side -> Side -> Shape
-rtTriangle = error "Define me!"
+rtTriangle x y = Polygon [(0.0, 0.0), (x, 0.0), (0.0, y)]
 
 -- 2. Define a function
 
 sides :: Shape -> Int
-sides = error "Define me!"
+sides (Rectangle l b) = if l == 0.0 || b == 0.0
+                        then 0
+                        else 4
+
+sides (RtTriangle b h) = if b == 0.0 || h == 0.0
+                         then 0
+                         else 3
+
+sides (Ellipse r1 r2) = if r1 == 0.0 || r2 == 0.0
+                        then 0
+                        else 42
+
+sides (Polygon (v1:v2:v3:v4:vs)) = 1 + sides (Polygon (v2:v3:v4:vs))
+sides (Polygon [_, _, _]) = 3
+sides (Polygon [_, _]) = 0
+sides (Polygon [_]) = 0
+sides (Polygon _) = 0
 
 --   which returns the number of sides a given shape has.
 --   For the purposes of this exercise, an ellipse has 42 sides,
