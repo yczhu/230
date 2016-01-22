@@ -80,7 +80,12 @@ sides (Polygon _) = 0
 -- 3. Define a function
 
 bigger :: Shape -> Float -> Shape
-bigger = error "Define me!"
+bigger (Rectangle l b) e = (Rectangle (l * e) b)
+bigger (RtTriangle b h) e = (RtTriangle (b * e) h)
+bigger (Ellipse r1 r2) e = (Ellipse (r1 * e) r2)
+
+-- Polygon sqrt(e)?
+--bigger (Polygon [])
 
 --   that takes a shape `s` and expansion factor `e` and returns
 --   a shape which is the same as (i.e., similar to in the geometric sense)
@@ -100,8 +105,13 @@ bigger = error "Define me!"
 
 --    Write a function
 
+-- What if n == 0?
 hanoi :: Int -> String -> String -> String -> IO ()
-hanoi = error "Define me!"
+hanoi n start goal via =  if n == 1
+                          then putStr ("move disc from " ++ start ++ " to " ++ goal ++ "\n")
+                          else do (hanoi (n-1) start via goal)
+                                  putStr("move disc from " ++ start ++ " to " ++ goal ++ "\n")
+                                  (hanoi (n-1) via goal start)
 
 --   that, given the number of discs $n$ and peg names $a$, $b$, and $c$,
 --   where a is the starting peg,
