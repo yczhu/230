@@ -137,8 +137,58 @@ hanoi n start goal via =  if n == 1
 -- Write a function `sierpinskiCarpet` that displays this figure on the
 -- screen:
 
+xWin, yWin :: Int
+xWin = 600
+yWin = 600
+
+fillTri :: Window -> Int -> Int -> Int -> IO() 
+fillTri w x y size = 
+    drawInWindow w (withColor Blue
+            (polygon [(x, y), (x+size, y), (x, y-size), (x,y)]))
+
+fillRect :: Window -> Int -> Int -> Int -> IO()
+fillRect w x y size = 
+    drawInWindow w (withColor Blue
+            (polygon [(x,y), (x + size, y), (x + size, y + size), (x, y + size), (x, y)]))
+
+minSize :: Int
+minSize = 8
+
+sierpinskiTri :: Window -> Int -> Int -> Int -> IO()
+sierpinskiTri w x y size = if size <= minSize
+                           then fillTri w x y size
+                           else let size2 = size `div` 2
+                           in do sierpinskiTri w x y size2
+                                 sierpinskiTri w x (y-size2) size2
+                                 sierpinskiTri w (x+size2) y size2
+
+main3 :: IO()
+main3 = runGraphics (
+        do w <- openWindow "Sierpinski's Triangle" (400,400)
+           sierpinskiTri w 50 300 256
+           k <- getKey w
+           closeWindow w
+        )
+
+sierpinskiRect w x y size = if size <= minSize
+                            then fillRect w x y size
+                            else let size3 = size `div` 3
+                            in do sierpinskiRect w x y size3
+                                  sierpinskiRect w x (y - size3) size3
+                                  sierpinskiRect w x (y - size3 - size3) size3
+                                  sierpinskiRect w (x + size3) y size3
+                                  sierpinskiRect w (x + size3 + size3) y size3
+                                  sierpinskiRect w (x + size3) (y - size3 - size3) size3
+                                  sierpinskiRect w (x + size3 + size3) (y - size3) size3
+                                  sierpinskiRect w (x + size3 + size3) (y - size3 - size3) size3
+
 sierpinskiCarpet :: IO ()
-sierpinskiCarpet = error "Define me!"
+sierpinskiCarpet = runGraphics (
+        do w <- openWindow "Sierpinski's Carpet" (400, 400)
+           sierpinskiRect w 50 300 250
+           k <- getKey w
+           closeWindow w
+        )
 
 -- Note that you either need to run your program in `SOE/src` or add this
 -- path to GHC's search path via `-i/path/to/SOE/src/`.
