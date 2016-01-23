@@ -137,10 +137,6 @@ hanoi n start goal via =  if n == 1
 -- Write a function `sierpinskiCarpet` that displays this figure on the
 -- screen:
 
-xWin, yWin :: Int
-xWin = 600
-yWin = 600
-
 fillTri :: Window -> Int -> Int -> Int -> IO() 
 fillTri w x y size = 
     drawInWindow w (withColor Blue
@@ -213,60 +209,67 @@ myFractal = error "Define me!"
 -- Write a *non-recursive* function to compute the length of a list
 
 lengthNonRecursive :: [a] -> Int
-lengthNonRecursive = error "Define me!"
+lengthNonRecursive list = foldl (+) 0 (map (\x -> 1) list)
 
 -- `doubleEach [1,20,300,4000]` should return `[2,40,600,8000]`
 
 doubleEach :: [Int] -> [Int]
-doubleEach = error "Define me!"
+doubleEach [] = []
+doubleEach (x : xs) = 2 * x : doubleEach(xs)
 
 -- Now write a *non-recursive* version of the above.
 
 doubleEachNonRecursive :: [Int] -> [Int]
-doubleEachNonRecursive = error "Define me!"
+doubleEachNonRecursive = map (\x -> x * 2)
 
 -- `pairAndOne [1,20,300]` should return `[(1,2), (20,21), (300,301)]`
 
 pairAndOne :: [Int] -> [(Int, Int)]
-pairAndOne = error "Define me!"
+pairAndOne [] = []
+pairAndOne (x : xs) = (x, x + 1) : pairAndOne(xs)
 
 
 -- Now write a *non-recursive* version of the above.
 
 pairAndOneNonRecursive :: [Int] -> [(Int, Int)]
-pairAndOneNonRecursive = error "Define me!"
+pairAndOneNonRecursive = map (\x -> (x, x + 1))
 
 -- `addEachPair [(1,2), (20,21), (300,301)]` should return `[3,41,601]`
 
 addEachPair :: [(Int, Int)] -> [Int]
-addEachPair = error "Define me!"
+addEachPair [] = []
+addEachPair ((x, y) : xs) = (x + y) : addEachPair(xs) 
 
 -- Now write a *non-recursive* version of the above.
 
 addEachPairNonRecursive :: [(Int, Int)] -> [Int]
-addEachPairNonRecursive = error "Define me!"
+addEachPairNonRecursive = map (\(x, y) -> x + y)
 
 -- `minList` should return the *smallest* value in the list. You may assume the
 -- input list is *non-empty*.
 
 minList :: [Int] -> Int
-minList = error "Define me!"
+minList [x] = x
+minList (x : xs) = min x (minList xs)
 
 -- Now write a *non-recursive* version of the above.
 
 minListNonRecursive :: [Int] -> Int
-minListNonRecursive = error "Define me!"
+minListNonRecursive = foldl min max_int
+    where max_int = maxBound :: Int
 
 -- `maxList` should return the *largest* value in the list. You may assume the
 -- input list is *non-empty*.
 
 maxList :: [Int] -> Int
-maxList = error "Define me!"
+maxList [x] = x
+maxList (x : xs) = max x (maxList xs)
 
 -- Now write a *non-recursive* version of the above.
 
 maxListNonRecursive :: [Int] -> Int
-maxListNonRecursive = error "Define me!"
+maxListNonRecursive = foldl max min_int
+    where min_int = minBound :: Int
 
 -- Now, a few functions for this `Tree` type.
 
@@ -277,19 +280,22 @@ data Tree a = Leaf a | Branch (Tree a) (Tree a)
 -- So: `fringe (Branch (Leaf 1) (Leaf 2))` should return `[1,2]`
 
 fringe :: Tree a -> [a]
-fringe = error "Define me!"
+fringe (Leaf x) = [x]
+fringe (Branch l r) = (fringe l) ++ (fringe r)
 
 -- `treeSize` should return the number of leaves in the tree.
 -- So: `treeSize (Branch (Leaf 1) (Leaf 2))` should return `2`.
 
 treeSize :: Tree a -> Int
-treeSize = error "Define me!"
+treeSize (Leaf _) = 1
+treeSize (Branch l r) = (treeSize l) + (treeSize r) 
 
 -- `treeSize` should return the height of the tree.
 -- So: `height (Branch (Leaf 1) (Leaf 2))` should return `1`.
 
 treeHeight :: Tree a -> Int
-treeHeight = error "Define me!"
+treeHeight (Leaf _) = 0
+treeHeight (Branch l r) = 1 + max (treeHeight l) (treeHeight r)
 
 -- Now, a tree where the values live at the nodes not the leaf.
 
