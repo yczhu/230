@@ -416,8 +416,31 @@ myMap f xs = foldr (\head array -> (f head) : array) [] xs
 -- yields the HTML speciﬁed above (but with no whitespace except what's
 -- in the textual data in the original XML).
 
+appendBR :: [SimpleXML] -> [SimpleXML]
+appendBR = foldr (\x xs -> [x, (Element "br" [])] ++ xs) []
+
+formPersona :: SimpleXML -> SimpleXML
+formPersona (Element "PERSONA" [person]) = person
+
+formSpeech :: SimpleXML -> SimpleXML
+formSpeech (Element "SPEAKER" [speaker]) = (Element "b" [speaker])
+formSpeech (Element "LINE" [line]) = line
+
+formScene :: SimpleXML -> [SimpleXML]
+formScene (Element "TITLE" title) = [Element "h3" title]
+formScene (Element "SPEECH" speech_list) = appendBR (map formSpeech speech_list)
+
+formAct :: SimpleXML -> [SimpleXML]
+formAct (Element "TITLE" title) = [Element "h2" title]
+formAct (Element "SCENE" scene_list) = (foldr (\xml tail -> (formScene xml) ++ tail) [] scene_list)
+
+formPlay :: SimpleXML -> [SimpleXML]
+formPlay (Element "TITLE" title) = [Element "h1" title]
+formPlay (Element "PERSONAE" personas) = (Element "h2" [PCDATA "Dramatis Personae"]) : appendBR (map formPersona personas)
+formPlay (Element "ACT" act_list) = (foldr (\xml tail -> (formAct xml) ++ tail) [] act_list)
+
 formatPlay :: SimpleXML -> SimpleXML
-formatPlay xml = PCDATA "WRITE ME!"
+formatPlay (Element "PLAY" xml_list) = Element "html" [Element "body" (foldr (\xml tail -> (formPlay xml) ++ tail) [] xml_list)]
 
 -- The main action that we've provided below will use your function to
 -- generate a ﬁle `dream.html` from the sample play. The contents of this
