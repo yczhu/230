@@ -80,12 +80,10 @@ sides (Polygon _) = 0
 -- 3. Define a function
 
 bigger :: Shape -> Float -> Shape
-bigger (Rectangle l b) e = (Rectangle (l * e) b)
-bigger (RtTriangle b h) e = (RtTriangle (b * e) h)
-bigger (Ellipse r1 r2) e = (Ellipse (r1 * e) r2)
-
--- Polygon sqrt(e)?
---bigger (Polygon [])
+bigger (Rectangle l b) e = (Rectangle (l * sqrt e) (b * sqrt e))
+bigger (RtTriangle b h) e = (RtTriangle (b * sqrt e) (h * sqrt e))
+bigger (Ellipse r1 r2) e = (Ellipse (r1 * sqrt e) (r2 * sqrt e))
+bigger (Polygon v) e = Polygon (map (\(a,b) -> ((a * sqrt e), (b * sqrt e))) v)
 
 --   that takes a shape `s` and expansion factor `e` and returns
 --   a shape which is the same as (i.e., similar to in the geometric sense)
@@ -137,34 +135,13 @@ hanoi n start goal via =  if n == 1
 -- Write a function `sierpinskiCarpet` that displays this figure on the
 -- screen:
 
-fillTri :: Window -> Int -> Int -> Int -> IO() 
-fillTri w x y size = 
-    drawInWindow w (withColor Blue
-            (polygon [(x, y), (x+size, y), (x, y-size), (x,y)]))
-
 fillRect :: Window -> Int -> Int -> Int -> IO()
 fillRect w x y size = 
     drawInWindow w (withColor Blue
             (polygon [(x,y), (x + size, y), (x + size, y + size), (x, y + size), (x, y)]))
 
 minSize :: Int
-minSize = 8
-
-sierpinskiTri :: Window -> Int -> Int -> Int -> IO()
-sierpinskiTri w x y size = if size <= minSize
-                           then fillTri w x y size
-                           else let size2 = size `div` 2
-                           in do sierpinskiTri w x y size2
-                                 sierpinskiTri w x (y-size2) size2
-                                 sierpinskiTri w (x+size2) y size2
-
-main3 :: IO()
-main3 = runGraphics (
-        do w <- openWindow "Sierpinski's Triangle" (400,400)
-           sierpinskiTri w 50 300 256
-           k <- getKey w
-           closeWindow w
-        )
+minSize = 2
 
 sierpinskiRect w x y size = if size <= minSize
                             then fillRect w x y size
@@ -195,8 +172,26 @@ sierpinskiCarpet = runGraphics (
 --    own design.  Be creative!  The only constraint is that it shows some
 --    pattern of recursive self-similarity.
 
+drawhexagonblue :: Window->Int->Int->Int->IO()
+drawhexagonblue w x y side = drawInWindow w (withColor Blue (polygon [(x,y+4*side), (x+3*side, y), (x, y-4*side), (x-3*side, y),(x,y+4*side)]))
+sierpinskihexagon :: Window->Int->Int->Int->IO()
+sierpinskihexagon w x y side = if side < minSize
+                               then drawhexagonblue w x y side 
+                               else let side2 = side `div` 2
+                               in do 
+                                     sierpinskihexagon w x (y+4*side) side2
+                                     sierpinskihexagon w (x+3*side) y side2
+                                     sierpinskihexagon w x (y-4*side) side2
+                                     sierpinskihexagon w (x-3*side) y side2
+                                    
 myFractal :: IO ()
-myFractal = error "Define me!"
+myFractal = runGraphics(
+                    do w <- openWindow "myFractal" (600, 600)
+                       sierpinskihexagon w 300 300 40
+                       k <- getKey w
+                       closeWindow w
+                       --spaceClose w
+                   ) 
 
 -- Part 3: Recursion Etc.
 -- ----------------------
@@ -416,6 +411,28 @@ myMap f xs = foldr (\head array -> (f head) : array) [] xs
 -- yields the HTML speciﬁed above (but with no whitespace except what's
 -- in the textual data in the original XML).
 
+format :: Int -> [SimpleXML] -> [SimpleXML]
+format _ [] = []
+format n ((Element name xml) : xmls)
+     | name == "TITLE" = (formatTitle n xml) ++ (format (n+1) xmls)
+     | name == "PERSONAE" = [Element "h2" [PCDATA "Dramatis Personae"]] ++ (format 2 xml) ++ (format 2 xmls)
+     | name == "PERSONA" = xml ++ [PCDATA "<br/>"] ++ (format 3 xmls)
+     | name == "ACT" = format 2 xml ++ format 2 xmls
+     | name == "SCENE" = format 3 xml ++ format 2 xmls
+     | name == "SPEECH" = format 2 xml ++ format 2 xmls
+     | name == "SPEAKER" = [Element "b" xml] ++ [PCDATA "<br/>"] ++ format 3 xmls
+     | name == "LINE" = xml ++ [PCDATA "<br/>"] ++ format 3 xmls
+     | otherwise = []
+
+formatPlay :: SimpleXML -> SimpleXML
+formatPlay (Element name xmls)
+     | name == "PLAY" = Element "html" [Element "body" (format 1 xmls)]
+     | otherwise = error "Error"
+
+formatTitle :: Int -> [SimpleXML] -> [SimpleXML]
+formatTitle n x = [Element ("h" ++ show n) x]
+
+{-
 appendBR :: [SimpleXML] -> [SimpleXML]
 appendBR = foldr (\x xs -> [x, (Element "br" [])] ++ xs) []
 
@@ -441,6 +458,7 @@ formPlay (Element "ACT" act_list) = (foldr (\xml tail -> (formAct xml) ++ tail) 
 
 formatPlay :: SimpleXML -> SimpleXML
 formatPlay (Element "PLAY" xml_list) = Element "html" [Element "body" (foldr (\xml tail -> (formPlay xml) ++ tail) [] xml_list)]
+-}
 
 -- The main action that we've provided below will use your function to
 -- generate a ﬁle `dream.html` from the sample play. The contents of this
