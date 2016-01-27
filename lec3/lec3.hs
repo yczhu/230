@@ -4,6 +4,7 @@ data Unshowable = A | B | C
     --deriving (Eq, Show)
 
 instance Show Unshowable where
+-- This type declaraction is not allowed in the instance.
 --show :: Unshowable ->  String
   show A = "Random A"
   show B = "Mess it B"
