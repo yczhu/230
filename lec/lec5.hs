@@ -6,6 +6,7 @@ class Monad m where
   (>>=)  :: m a -> (a -> m b) -> m b
 -}
 
+{-
 instance Monad [] where 
   return = returnForList
   (>>=)  = bindForList
@@ -20,6 +21,8 @@ bindForList as f = concatMap f as
 
 --bindForList [] f =  []
 --bindForList (x:xs) f = f x ++ bindForList xs f
+
+-}
 
 pairs :: [a] -> [b] -> [(a,b)]
 pairs xs ys =  do x <- xs

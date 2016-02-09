@@ -19,9 +19,9 @@ import Text.Parsec.String
 -- Tell us your name, email and student ID, by replacing the respective
 -- strings below
 
-myName  = "Write Your Name  Here"
-myEmail = "Write Your Email Here"
-mySID   = "Write Your SID   Here"
+myName  = "Yuanchao Zhu"
+myEmail = "yuz063@eng.ucsd.edu"
+mySID   = "A53098001"
 
 
 -- Problem 1: All About `foldl`
