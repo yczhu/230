@@ -32,22 +32,24 @@ mySID   = "A53098001"
 -- 1. Describe `foldl` and give an implementation:
 
 myFoldl :: (a -> b -> a) -> a -> [b] -> a
-myFoldl f b xs = error "TBD"
+myFoldl f b []      = b
+myFoldl f b (x:xs)  = let b' = f b x
+                      in myFoldl f b' xs
 
 -- 2. Using the standard `foldl` (not `myFoldl`), define the list reverse function:
 
 myReverse :: [a] -> [a]
-myReverse xs = error "TBD"
+myReverse xs = Prelude.foldl (\l n -> [n] ++ l) [] xs
 
 -- 3. Define `foldr` in terms of `foldl`:
 
 myFoldr :: (a -> b -> b) -> b -> [a] -> b
-myFoldr f b xs = error "TBD"
+myFoldr f b xs = Prelude.foldl (\base x -> f x base) b xs
 
 -- 4. Define `foldl` in terms of the standard `foldr` (not `myFoldr`):
 
 myFoldl2 :: (a -> b -> a) -> a -> [b] -> a
-myFoldl2 f b xs = error "TBD"
+myFoldl2 f b xs = Prelude.foldr (\base x -> f x base) b xs
 
 -- 5. Try applying `foldl` to a gigantic list. Why is it so slow?
 --    Try using `foldl'` (from [Data.List](http://www.haskell.org/ghc/docs/latest/html/libraries/base/Data-List.html#3))
