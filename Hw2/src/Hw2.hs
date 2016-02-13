@@ -65,9 +65,50 @@ data BST k v = Emp
              deriving (Show)
 
 -- Define a `delete` function for BSTs of this type:
+foldBST op base Emp            = base
+foldBST op base (Bind k v l r) = op k v ll rr
+  where
+   ll                          = foldBST op base l
+   rr                          = foldBST op base r
 
-delete :: (Ord k) => k -> BST k v -> BST k v
-delete k t = error "TBD"
+
+toList =  foldBST (\k v l r -> l ++ [(k, v)] ++ r) []
+
+instance (Eq k, Eq v) => Eq (BST k v) where
+  t1 == t2 = Hw2.toList t1 == Hw2.toList t2
+
+ofList :: (Ord k) => [(k, v)] -> BST k v
+ofList = Prelude.foldl (\t (k, v) -> Hw2.insert k v t) Emp
+
+insert :: (Ord k) => k -> v -> BST k v -> BST k v
+insert k v Emp = Bind k v Emp Emp
+insert k v (Bind k' v' l r)
+  | k == k'      = Bind k v l r
+  | k <  k'      = Bind k' v' (Hw2.insert k v l) r
+  | otherwise    = Bind k' v' l (Hw2.insert k v r)
+
+-- Remove the biggest, i.e. the rightest node in a BST tree, return the removed node's key & value, and the new BST tree
+removeBiggest :: (Ord k) => BST k v -> Maybe (k, v, BST k v)
+removeBiggest Emp            = Nothing
+removeBiggest (Bind k v l r) = 
+    case removeBiggest r of
+        --Nothing -> Just(k, v, Bind k v l r)
+        Nothing -> Just(k, v, Emp)
+        Just (k', v', t) -> Just (k', v', Bind k v l t)
+
+delete :: (Ord k, Eq k, Eq v) => k -> BST k v -> BST k v
+delete k (Bind k' v' l r)
+    | k == k' && l == Emp   = r
+    | k == k' && r == Emp   = l
+    | k == k'               = case removeBiggest l of
+                                Just (k'', v'', l') -> Bind k'' v'' l' r
+    | k < k'    = Bind k' v' (Hw2.delete k l) r
+    | k > k'    = Bind k' v' l (Hw2.delete k r)
+delete k Emp  = Emp
+
+root = Bind 2 "Poi" bstl bstr 
+bstl = Bind 1 "Kantai" Emp Emp
+bstr = Bind 3 "Shimakaze" Emp Emp 
 
 -- Part 3: An Interpreter for WHILE
 -- ================================
