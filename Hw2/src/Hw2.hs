@@ -189,18 +189,22 @@ evalE :: Expression -> State Store Value
 -- the value of the "current store" in a variable `s` use `s <- get`.
 
 evalOp :: Bop -> Value -> Value -> Value
-evalOp Plus (IntVal i) (IntVal j) = IntVal (i+j)
+evalOp Plus   (IntVal i) (IntVal j)  = IntVal (i+j)
+evalOp Minus  (IntVal i) (IntVal j)  = IntVal (i-j)
+evalOp Times  (IntVal i) (IntVal j)  = IntVal (i*j)
+evalOp Divide (IntVal i) (IntVal j)  = IntVal (div i j)
+evalOp Lt (IntVal i) (IntVal j)  = BoolVal (i<j)
+evalOp Le (IntVal i) (IntVal j)  = BoolVal (i<=j)
+evalOp Gt (IntVal i) (IntVal j)  = BoolVal (i>j)
+evalOp Ge (IntVal i) (IntVal j)  = BoolVal (i>=j)
 
--- >
+evalE (Var x)      = do s <- get
+                        return (findWithDefault (Hw2.IntVal 0) x s)
+evalE (Val v)      = return v
 
-evalE (Var x)      = error "TBD"
-evalE (Val v)      = error "TBD"
-evalE (Op o e1 e2) = error "TBD"
-
--- Statement Evaluator
--- -------------------
-
--- Next, write a function
+evalE (Hw2.Op o e1 e2) = do v1 <- evalE e1 
+                            v2 <- evalE e2
+                            return (evalOp o v1 v2)
 
 evalS :: Statement -> State Store ()
 
