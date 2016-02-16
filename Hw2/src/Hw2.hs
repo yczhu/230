@@ -178,10 +178,11 @@ evalS (Assign x e )    = do s <- get
 evalS w@(While e s)    = do v <- evalE e
                             case v of
                                  BoolVal b -> case b of
-                                                True  -> evalS s
+                                                True  -> do s' <- evalS s
+                                                            w' <- evalS w
+                                                            return ()
                                                 False -> return ()
                                  IntVal i  -> return ()
-                            evalS w
 
 evalS Skip             = return ()
 
@@ -192,8 +193,10 @@ evalS (Sequence s1 s2) = do st1 <- evalS s1
 evalS (If e s1 s2)     = do v <- evalE e 
                             case v of 
                                  BoolVal b -> case b of
-                                                 True  -> evalS s1
-                                                 False -> evalS s2
+                                                 True  -> do l <- evalS s1
+                                                             return ()
+                                                 False -> do r <- evalS s2
+                                                             return ()
                                  IntVal i  -> return ()
 
 execS :: Statement -> Store -> Store
