@@ -112,14 +112,7 @@ bstr = Bind 3 "Shimakaze" Emp Emp
 
 -- Part 3: An Interpreter for WHILE
 -- ================================
-
--- Next, you will use monads to build an evaluator for
--- a simple *WHILE* language. In this language, we will
--- represent different program variables as
-
 type Variable = String
-
--- Programs in the language are simply values of the type
 
 data Statement =
     Assign Variable Expression          -- x = e
@@ -128,9 +121,6 @@ data Statement =
   | Sequence Statement Statement        -- s1; s2
   | Skip                                -- no-op
   deriving (Show)
-
--- where expressions are variables, constants or
--- binary operators applied to sub-expressions
 
 data Expression =
     Var Variable                        -- x
@@ -156,37 +146,7 @@ data Value =
   | BoolVal Bool
   deriving (Show)
 
--- We will represent the *store* i.e. the machine's memory, as an associative
--- map from `Variable` to `Value`
-
 type Store = Map Variable Value
-
--- **Note:** we don't have exceptions (yet), so if a variable
--- is not found (eg because it is not initialized) simply return
--- the value `0`. In future assignments, we will add this as a
--- case where exceptions are thrown (the other case being type errors.)
-
--- We will use the standard library's `State`
--- [monad](http://hackage.haskell.org/packages/archive/mtl/latest/doc/html/Control-Monad-State-Lazy.html#g:2)
--- to represent the world-transformer.
--- Intuitively, `State s a` is equivalent to the world-transformer
--- `s -> (a, s)`. See the above documentation for more details.
--- You can ignore the bits about `StateT` for now.
-
--- Expression Evaluator
--- --------------------
-
--- First, write a function
-
-evalE :: Expression -> State Store Value
-
--- that takes as input an expression and returns a world-transformer that
--- returns a value. Yes, right now, the transformer doesnt really transform
--- the world, but we will use the monad nevertheless as later, the world may
--- change, when we add exceptions and such.
-
--- **Hint:** The value `get` is of type `State Store Store`. Thus, to extract
--- the value of the "current store" in a variable `s` use `s <- get`.
 
 evalOp :: Bop -> Value -> Value -> Value
 evalOp Plus   (IntVal i) (IntVal j)  = IntVal (i+j)
@@ -197,7 +157,10 @@ evalOp Lt (IntVal i) (IntVal j)  = BoolVal (i<j)
 evalOp Le (IntVal i) (IntVal j)  = BoolVal (i<=j)
 evalOp Gt (IntVal i) (IntVal j)  = BoolVal (i>j)
 evalOp Ge (IntVal i) (IntVal j)  = BoolVal (i>=j)
+-- Exception handle
+evalOp _  _          _           = IntVal (0)
 
+evalE :: Expression -> State Store Value
 evalE (Var x)      = do s <- get
                         return (findWithDefault (Hw2.IntVal 0) x s)
 evalE (Val v)      = return v
@@ -208,24 +171,24 @@ evalE (Hw2.Op o e1 e2) = do v1 <- evalE e1
 
 evalS :: Statement -> State Store ()
 
--- that takes as input a statement and returns a world-transformer that
--- returns a unit. Here, the world-transformer should in fact update the input
--- store appropriately with the assignments executed in the course of
--- evaluating the `Statement`.
+evalS (Assign x e )    = do s <- get
+                            v <- evalE e 
+                            put (Data.Map.insert x v s)
 
--- **Hint:** The value `put` is of type `Store -> State Store ()`.
--- Thus, to "update" the value of the store with the new store `s'`
--- do `put s'`.
-
-evalS (Assign x e )    = error "TBD"
 evalS w@(While e s)    = error "TBD"
-evalS Skip             = error "TBD"
-evalS (Sequence s1 s2) = error "TBD"
-evalS (If e s1 s2)     = error "TBD"
 
--- In the `If` case, if `e` evaluates to a non-boolean value, just skip both
--- the branches. (We will convert it into a type error in the next homework.)
--- Finally, write a function
+evalS Skip             = return ()
+
+evalS (Sequence s1 s2) = do st1 <- evalS s1
+                            st2 <- evalS s2
+                            return ()
+
+evalS (If e s1 s2)     = do v <- evalE e 
+                            case v of 
+                                 BoolVal b -> case b of
+                                                 True  -> evalS s1
+                                                 False -> evalS s2
+                                 IntVal i  -> return ()
 
 execS :: Statement -> Store -> Store
 execS = error "TBD"
