@@ -175,7 +175,13 @@ evalS (Assign x e )    = do s <- get
                             v <- evalE e 
                             put (Data.Map.insert x v s)
 
-evalS w@(While e s)    = error "TBD"
+evalS w@(While e s)    = do v <- evalE e
+                            case v of
+                                 BoolVal b -> case b of
+                                                True  -> evalS s
+                                                False -> return ()
+                                 IntVal i  -> return ()
+                            evalS w
 
 evalS Skip             = return ()
 
@@ -191,7 +197,8 @@ evalS (If e s1 s2)     = do v <- evalE e
                                  IntVal i  -> return ()
 
 execS :: Statement -> Store -> Store
-execS = error "TBD"
+execS stmt store =  let s = evalS stmt
+                    in execState s store
 
 -- such that `execS stmt store` returns the new `Store` that results
 -- from evaluating the command `stmt` from the world `store`.
