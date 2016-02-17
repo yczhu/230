@@ -55,6 +55,12 @@ myFoldl2 f b xs = Prelude.foldr (\base x -> f x base) b xs
 --    Try using `foldl'` (from [Data.List](http://www.haskell.org/ghc/docs/latest/html/libraries/base/Data-List.html#3))
 --    instead; can you explain why it's faster?
 
+{-
+foldl will first expand the whole expression on the runnin stack, and then do the reduction. Due to the lazy evaluation, the expressions are reduced only when needed. This will make the stack too big, thus making it slow and even stack overflow.
+
+foldl' will reduce the inner reducible expression when possible, which gets rid of the long unreducible chain, thus making it run way faster.
+-}
+
 -- Part 2: Binary Search Trees
 -- ===========================
 
@@ -226,91 +232,142 @@ w_test = (Sequence (Assign "X" (Op Plus (Op Minus (Op Plus (Val (IntVal 1)) (Val
 
 w_fact = (Sequence (Assign "N" (Val (IntVal 2))) (Sequence (Assign "F" (Val (IntVal 1))) (While (Op Gt (Var "N") (Val (IntVal 0))) (Sequence (Assign "X" (Var "N")) (Sequence (Assign "Z" (Var "F")) (Sequence (While (Op Gt (Var "X") (Val (IntVal 1))) (Sequence (Assign "F" (Op Plus (Var "Z") (Var "F"))) (Assign "X" (Op Minus (Var "X") (Val (IntVal 1)))))) (Assign "N" (Op Minus (Var "N") (Val (IntVal 1))))))))))
 
--- As you can see, it is rather tedious to write the above tests! They
--- correspond to the code in the files `test.imp` and `fact.imp`. When you are
--- done, you should get
-
--- ~~~~~{.haskell}
--- ghci> run w_test
--- Output Store:
--- fromList [("X",IntVal 0),("Y",IntVal 10)]
-
--- ghci> run w_fact
--- Output Store:
--- fromList [("F",IntVal 2),("N",IntVal 0),("X",IntVal 1),("Z",IntVal 2)]
--- ~~~~~
-
 -- Problem 4: A Parser for WHILE
 -- =============================
-
--- It is rather tedious to have to specify individual programs as Haskell
--- values. For this problem, you will use parser combinators to build a parser
--- for the WHILE language from the previous problem.
-
--- Parsing Constants
--- -----------------
-
--- First, we will write parsers for the `Value` type
-
 valueP :: Parser Value
 valueP = intP <|> boolP
 
--- To do so, fill in the implementations of
-
 intP :: Parser Value
-intP = error "TBD"
+intP = do c <- many1 digit
+          return (Hw2.IntVal (read c))
 
 -- Next, define a parser that will accept a
 -- particular string `s` as a given value `x`
 
 constP :: String -> a -> Parser a
-constP s x = error "TBD"
+constP s x = do c <- string s
+                return x
 
 -- and use the above to define a parser for boolean values
 -- where `"true"` and `"false"` should be parsed appropriately.
 
 boolP :: Parser Value
-boolP = error "TBD"
-
--- Continue to use the above to parse the binary operators
+boolP = choice [constP "true" (Hw2.BoolVal True), constP "false" (Hw2.BoolVal False)]
 
 opP :: Parser Bop
-opP = error "TBD"
-
+opP = choice [constP "+" (Hw2.Plus),
+              constP "-" (Hw2.Minus),
+              constP "*" (Hw2.Times),
+              constP "/" (Hw2.Divide),
+              constP ">" (Hw2.Gt),
+              constP ">="(Hw2.Ge),
+              constP "<" (Hw2.Lt),
+              constP "<="(Hw2.Le)]
 
 -- Parsing Expressions
 -- -------------------
-
 -- Next, the following is a parser for variables, where each
 -- variable is one-or-more uppercase letters.
-
 varP :: Parser Variable
 varP = many1 upper
 
--- Use the above to write a parser for `Expression` values
+varExpr :: Parser Expression
+varExpr = do var <- varP
+             return (Hw2.Var var)
 
+valExpr :: Parser Expression
+valExpr = do val <- valueP 
+             return (Hw2.Val val)
+
+parenExpr :: Parser Expression
+parenExpr = do string "("
+               e <- exprP
+               string ")"
+               return e
+
+baseExpr :: Parser Expression
+baseExpr =  varExpr
+        <|> valExpr
+        <|> parenExpr
+
+opExpr :: Expression -> Parser Expression
+opExpr e1 = do op <- opP
+               spaces
+               e2 <- exprP
+               return (Hw2.Op op e1 e2)
+
+-- Use the above to write a parser for `Expression` values
 exprP :: Parser Expression
-exprP = error "TBD"
+exprP = do e1 <- baseExpr
+           spaces
+           opExpr e1 <|> return e1
 
 -- Parsing Statements
 -- ------------------
+assignStmt :: Parser Statement
+assignStmt = do var <- varP
+                spaces  -- Skip any spaces, same below
+                string ":="
+                spaces
+                val <- exprP
+                return (Hw2.Assign var val)
+            
 
--- Next, use the expression parsers to build a statement parser
+ifStmt :: Parser Statement
+ifStmt = do string "if"
+            spaces
+            e  <- exprP
+            spaces
+            string "then"
+            spaces
+            s1 <- statementP
+            spaces
+            string "else"
+            spaces
+            s2 <- statementP
+            spaces
+            string "endif"
+            spaces
+            return (Hw2.If e s1 s2)
+
+skipStmt :: Parser Statement
+skipStmt = do string "skip"
+              return Hw2.Skip
+
+whileStmt :: Parser Statement
+whileStmt = do string "while"
+               spaces
+               e <- exprP
+               spaces
+               string "do"
+               spaces
+               while_body <- statementP
+               spaces
+               string "endwhile"
+               spaces
+               return (Hw2.While e while_body)
+
+seqStmt :: Statement -> Parser Statement
+seqStmt st1 = do string ";"
+                 spaces
+                 st2 <- statementP 
+                 return (Hw2.Sequence st1 st2)
+
+baseStmt :: Parser Statement
+baseStmt = ifStmt
+       <|> assignStmt
+       <|> skipStmt
+       <|> whileStmt
 
 statementP :: Parser Statement
-statementP = error "TBD"
-
--- When you are done, we can put the parser and evaluator together
--- in the end-to-end interpreter function
+statementP = do st1 <- baseStmt
+                seqStmt st1 <|> return st1
 
 runFile s = do p <- parseFromFile statementP s
                case p of
                  Left err   -> print err
                  Right stmt -> run stmt
 
--- When you are done you should see the following at the ghci prompt
-
--- ~~~~~{.haskell}
 -- ghci> runFile "test.imp"
 -- Output Store:
 -- fromList [("X",IntVal 0),("Y",IntVal 10)]
@@ -318,9 +375,3 @@ runFile s = do p <- parseFromFile statementP s
 -- ghci> runFile "fact.imp"
 -- Output Store:
 -- fromList [("F",IntVal 2),("N",IntVal 0),("X",IntVal 1),("Z",IntVal 2)]
--- ~~~~~
-
-
-
-
-
