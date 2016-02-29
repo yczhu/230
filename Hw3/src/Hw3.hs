@@ -1,28 +1,6 @@
 -- ---
 -- title: Homework #3, Due Monday, Feb 29, 2016 (23:59:59 PST)
 -- ---
-
--- Preliminaries
--- =============
-
--- To complete this homework,
-
--- 1. download [Hw3.tar.gz](../static/Hw2.tgz),
--- 2. unzip it by `tar -zxvf Hw3.tgz`
--- 3. `cd Hw3` ,
--- 4. Fill in each `error "TODO"` in `src/Hw3.hs`
--- 5. Submit by mailing the completed `Hw3.hs` to `cse230@goto.ucsd.edu` with the
---    subject "HW3".
-
--- You will receive a confirmation email after submitting.
-
--- Your code *must* typecheck against the given type signatures.
--- Feel free to add your own tests to this file to exercise the
--- functions you write. As before, you can compile the code by
--- doing `stack build` and load in `ghci` by doing `stack ghci`.
-
--- **Learn to read the [documentation](http://hackage.haskell.org)**
-
 {-# LANGUAGE TypeSynonymInstances      #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
@@ -51,9 +29,9 @@ quickCheckN n = quickCheckWith $ stdArgs { maxSuccess = n}
 -- Tell us your name, email and student ID, by replacing the respective
 -- strings below
 
-myName  = "Write Your Name  Here"
-myEmail = "Write Your Email Here"
-mySID   = "Write Your SID   Here"
+myName  = "Yuanchao Zhu"
+myEmail = "yuz063@eng.ucsd.edu"
+mySID   = "A53098001"
 
 
 
@@ -121,15 +99,64 @@ data Statement =
 --   up and is assigned to the variable `x` after which the *handler*
 --   statement `h` is executed.
 
--- We will use the `State` [monad][2] to represent the world-transformer.
--- Intuitively, `State s a` is equivalent to the world-transformer
--- `s -> (a, s)`. See the above documentation for more details.
--- You can ignore the bits about `StateT` for now.
-
 -- Write a function
+evalOp :: (MonadState Store m, MonadError Value m, MonadWriter String m) => Bop -> Value -> Value -> m Value
+evalOp Plus   (IntVal i) (IntVal j)  = return $ IntVal (i+j)
+evalOp Minus  (IntVal i) (IntVal j)  = return $ IntVal (i-j)
+evalOp Times  (IntVal i) (IntVal j)  = return $ IntVal (i*j)
+evalOp Divide (IntVal i) (IntVal j)
+    | j == 0    = throwError $ IntVal 1
+    | otherwise = return $ IntVal (div i j)
+evalOp Lt (IntVal i) (IntVal j)  = return $ BoolVal (i<j)
+evalOp Le (IntVal i) (IntVal j)  = return $ BoolVal (i<=j)
+evalOp Gt (IntVal i) (IntVal j)  = return $ BoolVal (i>j)
+evalOp Ge (IntVal i) (IntVal j)  = return $ BoolVal (i>=j)
+evalOp _  _          _           = throwError $ IntVal 2
+
+evalE :: (MonadState Store m, MonadError Value m, MonadWriter String m) => Expression -> m Value
+evalE (Val v) = return v
+evalE (Var x) = do s <- get
+                   case Map.lookup x s of
+                       Just v  -> return v
+                       Nothing -> throwError $ IntVal 0
+
+evalE (Hw3.Op o e1 e2) = do v1 <- evalE e1
+                            v2 <- evalE e2
+                            evalOp o v1 v2
 
 evalS :: (MonadState Store m, MonadError Value m, MonadWriter String m) => Statement -> m ()
-evalS = error "TODO"
+evalS (Assign x e)     = do s <- get
+                            v <- evalE e
+                            put (Map.insert x v s)
+
+evalS (If e s1 s2)     = do v <- evalE e
+                            case v of
+                                BoolVal True  -> evalS s1
+                                BoolVal False -> evalS s2
+                                _             -> throwError $ IntVal 2
+
+
+evalS w@(While e s)    = do v <- evalE e
+                            case v of
+                                BoolVal True  -> do s' <- evalS s
+                                                    w' <- evalS w
+                                                    return ()
+                                BoolVal False -> return ()
+                                _             -> return ()
+
+evalS Skip             = return ()
+
+evalS (Sequence s1 s2) = do st1 <- evalS s1
+                            st2 <- evalS s2
+                            return ()
+
+evalS (Print s e)      = do e1 <- evalE e
+                            tell $ s ++ (show e1) ++ "\n"
+                            return ()
+evalS (Try s1 v s2)    = catchError (evalS s1) (\v' -> evalS $ Sequence (Assign v (Val v')) s2)
+                            
+evalS (Throw e)        = do e1 <- evalE e
+                            throwError e1
 
 -- Next, we will implement a *concrete instance* of a monad `m` that
 -- satisfies the above conditions, by filling in a suitable definition:
@@ -139,7 +166,7 @@ type Eval a = ErrorT Value (WriterT String (State Store)) a
 -- Now, we implement a function to *run* the action from a given store:
 
 runEval :: Eval a -> Store -> ((Either Value a, String), Store)
-runEval act sto = error "TODO"
+runEval act sto = runState (runWriterT (runErrorT act)) sto
 
 -- When you are done, you will get an implementation:
 
@@ -158,46 +185,6 @@ leftMaybe (Right _) = Nothing
 -- - `exn` is possibly an exception (if the program terminates with an uncaught exception),
 -- - `log` is the log of messages generated by the `Print` statements.
 
--- Requirements
--- ------------
-
--- In the case of exceptional termination, the `st'` should be the state *at
--- the point where the last exception was thrown, and `log` should include all
--- the messages *upto* that point -- make sure you stack (*order*) your transformers
--- appropriately!
-
--- - Reading an undefined variable should raise an exception carrying the value `IntVal 0`.
-
--- - Division by zero should raise an exception carrying the value `IntVal 1`.
-
--- - A run-time type error (addition of an integer to a boolean, comparison of
---   two values of different types) should raise an exception carrying the value
---   `IntVal 2`.
-
--- Example 1
--- ---------
-
--- If `st` is the empty state (all variables undefined) and `s` is the program
-
--- ~~~~~{.haskell}
--- X := 0 ;
--- Y := 1 ;
--- print "hello world: " X;
--- if X < Y then
---   throw (X+Y)
--- else
---   skip
--- endif;
--- Z := 3
--- ~~~~~
-
--- then `execute st s` should return the triple
-
--- ~~~~~{.haskell}
--- (fromList [("X", IntVal 0), ("Y",  IntVal 1)], Just (IntVal 1), "hello world: IntVal 0\n")
--- ~~~~~
-
--- The program is provided as a Haskell value below:
 
 mksequence = foldr Sequence Skip
 
@@ -207,39 +194,6 @@ testprog1 = mksequence [Assign "X" $ Val $ IntVal 0,
                         If (Op Lt (Var "X") (Var "Y")) (Throw (Op Plus (Var "X") (Var "Y")))
                                                        Skip,
                         Assign "Z" $ Val $ IntVal 3]
-
--- Example 2
--- ---------
-
--- If `st` is the empty state (all variables undefined) and `s` is the program
-
--- ~~~~~{.haskell}
--- X := 0 ;
--- Y := 1 ;
--- try
---   if X < Y then
---     A := 100;
---     throw (X+Y);
---     B := 200
---   else
---     skip
---   endif;
--- catch E with
---   Z := E + A
--- endwith
--- ~~~~~
-
--- then `execute st s` should return the triple
-
--- ~~~~~{.haskell}
--- ( fromList [("A", IntVal 100), ("E", IntVal 1)
---            ,("X", IntVal 0), ("Y", IntVal 1)
---  	   ,("Z", IntVal 101)]
--- , Nothing
--- , "")
--- ~~~~~
-
--- Again, the program as a Haskell value:
 
 testprog2 = mksequence [Assign "X" $ Val $ IntVal 0,
                         Assign "Y" $ Val $ IntVal 1,
