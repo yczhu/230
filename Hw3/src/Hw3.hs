@@ -506,7 +506,9 @@ muxN (b1,b2,sel) = map (\ (bb1,bb2) -> mux (bb1,bb2,sel)) (zip b1 b2)
 -- >
 demuxN :: ([Signal], Signal) -> ([Signal], [Signal])
 demuxN (b,sel) = unzip (map (\bb -> demux (bb,sel)) b)
-
+-- >
+nand2 :: (Signal, Signal) -> Signal
+nand2 = lift2 $ \x y -> (not x) && y
 
 -- Basic Signals
 -- -------------
@@ -620,15 +622,51 @@ prop_Adder_Correct l1 l2 =
 -- yield zero.
 
 prop_bitSubtractor_Correct ::  Signal -> [Bool] -> Bool
-prop_bitSubtractor_Correct = error "TODO"
+prop_bitSubtractor_Correct bin xs =
+  binary (sampleN out) == max 0 (binary xs - binary (sample1 bin))
+  where (out, bout) = bitSubtractor (bin, map lift0 xs)
 
 -- 2. Using the `bitAdder` circuit as a model, deﬁne a `bitSubtractor`
 -- circuit that implements this functionality and use QC to check that
 -- your behaves correctly.
 
-bitSubtractor :: (Signal, [Signal]) -> ([Signal], Signal)
-bitSubtractor = error "TODO"
+-- Referred https://en.wikipedia.org/wiki/Subtractor for halfsub
 
+halfsub :: (Signal, Signal) -> (Signal, Signal)
+halfsub (x,y) = (diff, bout)
+  where diff  = xor2 (x, y)
+        bout  = nand2 (x, y)
+
+prop_halfsub_zero b1 =
+  halfsub (lift0 b1, lift0 False) === (lift0 b1, lift0 False)
+
+fullsub :: (Signal, Signal, Signal) -> (Signal, Signal)
+fullsub (x, y, bin) = (diff, bout)
+    where (diff1, bout1) = halfsub (x, y)
+          (diff, bout2)  = halfsub (diff1, bin)
+          bout           = xor2 (bout1, bout2)
+
+test3a = probe [("bin",bin), ("x",x), ("y",y), ("  diff",diff), ("bout",bout)]
+  where bin        = high
+        x          = low
+        y          = high
+        (diff,bout) = fullsub (bin, x, y)
+
+bitSubtractor :: (Signal, [Signal]) -> ([Signal], Signal)
+bitSubtractor (bin, [])   = ([], bin)
+bitSubtractor (bin, x:xs) = (nand2(bout, diff):diffs, bout)
+  where (diff, b)     = halfsub (x, bin)
+        (diffs, bout) = bitSubtractor (b,xs)
+
+test3b = probe [("bin",bin), ("in1",in1), ("in2",in2), ("in3",in3), ("in4",in4),
+               ("  s1",s1), ("s2",s2), ("s3",s3), ("s4",s4), ("b",b)]
+  where
+    bin = high
+    in1 = high
+    in2 = high
+    in3 = low
+    in4 = high
+    ([s1,s2,s3,s4], b) = bitSubtractor (bin, [in1,in2,in3,in4])
 
 -- Problem: Multiplication
 -- -----------------------
