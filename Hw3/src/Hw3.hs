@@ -237,7 +237,7 @@ data BSTop k v = BSTadd k v | BSTdel k
 
 -- and a function that constructs a tree from a sequence of operations
 
-ofBSTops ::  Ord k => [BSTop k v] -> BST k v
+ofBSTops ::  (Ord k) => [BSTop k v] -> BST k v
 ofBSTops    = foldr doOp Emp
   where doOp (BSTadd k v) = bstInsert k v
         doOp (BSTdel k)   = bstDelete k
@@ -265,7 +265,11 @@ genBSTop  = frequency [(5, genBSTadd), (1, genBSTdel)]
 -- Write an insertion function
 
 bstInsert :: (Ord k) => k -> v -> BST k v -> BST k v
-bstInsert = error "TBD"
+bstInsert k v Emp = Bind k v Emp Emp
+bstInsert k v (Bind k' v' l r)
+  | k == k'      = Bind k v l r
+  | k <  k'      = Bind k' v' (bstInsert k v l) r
+  | otherwise    = Bind k' v' l (bstInsert k v r)
 
 -- such that `bstInsert k v t` inserts a key `k` with value
 -- `v` into the tree `t`. If `k` already exists in the input
@@ -283,9 +287,35 @@ prop_insert_map = forAll (listOf genBSTadd) $ \ops ->
 -- ------------
 
 -- Write a deletion function for BSTs of this type:
+-- Remove the biggest, i.e. the rightest node in a BST tree, return the removed node's key & value, and the new BST tree
+--foldBST op base Emp            = base
+--foldBST op base (Bind k v l r) = op k v ll rr
+--  where
+--   ll                          = foldBST op base l
+--   rr                          = foldBST op base r
+
+--toList =  foldBST (\k v l r -> l ++ [(k, v)] ++ r) []
+
+--instance (Eq k, Eq v) => Eq (BST k v) where
+--  t1 == t2 = Hw3.toList t1 == Hw3.toList t2
+
+removeBiggest :: (Ord k) => BST k v -> Maybe (k, v, BST k v)
+removeBiggest Emp            = Nothing
+removeBiggest (Bind k v l r) =
+    case removeBiggest r of
+        --Nothing -> Just(k, v, Bind k v l r)
+        --Nothing -> Just(k, v, Emp)
+        Nothing -> Just(k, v, l)
+        Just (k', v', t) -> Just (k', v', Bind k v l t)
 
 bstDelete :: (Ord k) => k -> BST k v -> BST k v
-bstDelete k t = error "TBD"
+bstDelete k (Bind k' v' l r)
+    | k < k'    = Bind k' v' (bstDelete k l) r
+    | k > k'    = Bind k' v' l (bstDelete k r)
+    | otherwise = case removeBiggest l of
+                    Just (k'', v'', l') -> Bind k'' v'' l' r
+                    Nothing             -> r
+bstDelete k Emp  = Emp
 
 -- such that `bstDelete k t` removes the key `k` from the tree `t`.
 -- If `k` is absent from the input tree, then the tree is returned
@@ -333,11 +363,6 @@ prop_insert_bal = forAll (listOf genBSTadd) $ isBal . ofBSTops
 -- >
 prop_delete_bal ::  Property
 prop_delete_bal = forAll (listOf genBSTop) $ isBal . ofBSTops
-
-
-
-
-
 
 -- Problem 3: Circuit Testing
 -- ==========================
