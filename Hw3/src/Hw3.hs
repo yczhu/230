@@ -676,7 +676,8 @@ test3b = probe [("bin",bin), ("in1",in1), ("in2",in2), ("in3",in3), ("in4",in4),
 -- width as input and outputs their product.
 
 prop_Multiplier_Correct ::  [Bool] -> [Bool] -> Bool
-prop_Multiplier_Correct = error "TODO"
+prop_Multiplier_Correct x y = 
+  (binary(sampleN(multiplier (map lift0 x, map lift0 y)))) == (binary x) * (binary y)
 
 -- 4. Deﬁne a `multiplier` circuit and check that it satisﬁes your
 -- speciﬁcation. (Looking at how adder is deﬁned will help with this,
@@ -685,6 +686,7 @@ prop_Multiplier_Correct = error "TODO"
 -- binary numbers on paper.)
 
 multiplier :: ([Signal], [Signal]) -> [Signal]
-multiplier = error "TODO"
-
--- [1]: http://www.cis.upenn.edu/~bcpierce/courses/552-2008/resources/circuits.hs
+multiplier (xs, [])   = map (const low) xs
+multiplier (xs, y:ys) = adder (z, zs)
+      where z  = muxN (xs, repeat low, y)
+            zs = low : multiplier (xs, ys)
