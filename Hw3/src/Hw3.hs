@@ -18,7 +18,7 @@ import Control.Monad.Writer
 import GHC.Generics
 import Test.QuickCheck hiding ((===))
 import Control.Monad (forM, forM_)
-import Data.List (transpose, intercalate)
+import Data.List (transpose, intercalate, sortBy, nubBy)
 
 
 quickCheckN n = quickCheckWith $ stdArgs { maxSuccess = n}
@@ -288,23 +288,10 @@ prop_insert_map = forAll (listOf genBSTadd) $ \ops ->
 
 -- Write a deletion function for BSTs of this type:
 -- Remove the biggest, i.e. the rightest node in a BST tree, return the removed node's key & value, and the new BST tree
---foldBST op base Emp            = base
---foldBST op base (Bind k v l r) = op k v ll rr
---  where
---   ll                          = foldBST op base l
---   rr                          = foldBST op base r
-
---toList =  foldBST (\k v l r -> l ++ [(k, v)] ++ r) []
-
---instance (Eq k, Eq v) => Eq (BST k v) where
---  t1 == t2 = Hw3.toList t1 == Hw3.toList t2
-
 removeBiggest :: (Ord k) => BST k v -> Maybe (k, v, BST k v)
 removeBiggest Emp            = Nothing
 removeBiggest (Bind k v l r) =
     case removeBiggest r of
-        --Nothing -> Just(k, v, Bind k v l r)
-        --Nothing -> Just(k, v, Emp)
         Nothing -> Just(k, v, l)
         Just (k', v', t) -> Just (k', v', Bind k v l t)
 
@@ -346,7 +333,24 @@ isBal Emp            = True
 -- Write a balanced tree generator
 
 genBal :: Gen (BST Int Char)
-genBal = error "TBD"
+genBal = balancedBST <$> genSortedUniqueBSTadd
+compareByKey (BSTadd k1 _) (BSTadd k2 _) = compare k1 k2
+eqByKey (BSTadd k1 _) (BSTadd k2 _) = k1 == k2
+
+genSortedBSTadd :: Gen ([BSTop Int Char])
+genSortedBSTadd = sortBy compareByKey <$> (listOf genBSTadd)
+
+genSortedUniqueBSTadd :: Gen([BSTop Int Char])
+genSortedUniqueBSTadd = nubBy eqByKey <$> genSortedBSTadd
+
+-- Take the sorted-by-key list, the median as root, and further construct left part and right part.
+balancedBST :: [BSTop k v] -> BST k v
+balancedBST [] = Emp
+balancedBST [BSTadd k v] = Bind k v Emp Emp
+balancedBST xs = let (ls, (BSTadd k v) : rs) = splitAt (length xs `div` 2) xs
+                     l = balancedBST ls
+                     r = balancedBST rs
+                 in Bind k v l r
 
 -- such that
 
