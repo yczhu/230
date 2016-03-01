@@ -263,10 +263,12 @@ genBSTop  = frequency [(5, genBSTadd), (1, genBSTdel)]
 -- -------------
 
 -- Write an insertion function
-
 bstInsert :: (Ord k) => k -> v -> BST k v -> BST k v
-bstInsert k v Emp = Bind k v Emp Emp
-bstInsert k v (Bind k' v' l r)
+bstInsert k v t = makeBalance $ bstInsert' k v t
+
+bstInsert' :: (Ord k) => k -> v -> BST k v -> BST k v
+bstInsert' k v Emp = Bind k v Emp Emp
+bstInsert' k v (Bind k' v' l r)
   | k == k'      = Bind k v l r
   | k <  k'      = Bind k' v' (bstInsert k v l) r
   | otherwise    = Bind k' v' l (bstInsert k v r)
@@ -296,13 +298,16 @@ removeBiggest (Bind k v l r) =
         Just (k', v', t) -> Just (k', v', Bind k v l t)
 
 bstDelete :: (Ord k) => k -> BST k v -> BST k v
-bstDelete k (Bind k' v' l r)
+bstDelete k t = makeBalance $ bstDelete' k t
+
+bstDelete' :: (Ord k) => k -> BST k v -> BST k v
+bstDelete' k (Bind k' v' l r)
     | k < k'    = Bind k' v' (bstDelete k l) r
     | k > k'    = Bind k' v' l (bstDelete k r)
     | otherwise = case removeBiggest l of
                     Just (k'', v'', l') -> Bind k'' v'' l' r
                     Nothing             -> r
-bstDelete k Emp  = Emp
+bstDelete' k Emp  = Emp
 
 -- such that `bstDelete k t` removes the key `k` from the tree `t`.
 -- If `k` is absent from the input tree, then the tree is returned
@@ -361,6 +366,39 @@ prop_genBal = forAll genBal isBal
 
 -- Rig it so that your insert and delete functions *also*
 -- create balanced trees. That is, they satisfy the properties
+
+-- BST do a left rotate, this will make left sub-tree height grow by 1 and right sub-tree height reduce by 1 
+rotateLeft :: (Ord k) => BST k v -> BST k v
+rotateLeft Emp = Emp
+rotateLeft t@(Bind k v l r) = 
+  case r of
+    Emp -> t
+    Bind k' v' l' r' -> Bind k' v' (Bind k v l l') r'
+
+-- BST do a right rotate, this will make left sub-tree height reduce by 1 and right sub-tree height grow by 1 
+rotateRight :: (Ord k) => BST k v -> BST k v
+rotateRight Emp = Emp
+rotateRight t@(Bind k  v l r) =
+  case l of
+    Emp -> t
+    Bind k' v' l' r' -> Bind k' v' l' (Bind k v r' r)
+
+-- Turn an unbalanced tree to balanced.
+makeBalance :: (Ord k) => BST k v -> BST k v
+makeBalance Emp = Emp
+makeBalance t@(Bind k v l r)
+  -- first left rotate the left sub-tree, then right rotate the root
+  | getBalanceDelta t > 1 && ((getBalanceDelta l) < 0) = rotateRight (Bind k v (rotateLeft l) r) 
+  -- Just right rotate the root once
+  | getBalanceDelta t > 1                            = rotateRight t
+  -- These two are inverted situation
+  | getBalanceDelta t < -1 && ((getBalanceDelta r) > 0)= rotateLeft (Bind k v l (rotateRight r))
+  | getBalanceDelta t < -1                           = rotateLeft t
+  | otherwise                                        = t
+
+getBalanceDelta :: (Ord k) => BST k v -> Int
+getBalanceDelta Emp = 0
+getBalanceDelta (Bind k v l r) = height l - height r
 
 prop_insert_bal ::  Property
 prop_insert_bal = forAll (listOf genBSTadd) $ isBal . ofBSTops
