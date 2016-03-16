@@ -1,0 +1,21 @@
+build-type:          Simple
+cabal-version:       >=1.18
+name:                Hw4 
+version:             1.0 
+
+Flag grading
+  Default: False 
+
+Library
+  Default-Language: Haskell2010
+
+  Build-Depends:  base       >= 4   && < 5
+                , containers
+                , mtl
+                , stm
+                , pretty
+                , QuickCheck
+
+  Exposed-Modules: Hw4
+
+  Hs-Source-Dirs: .
