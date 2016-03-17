@@ -99,7 +99,7 @@ removeBiggest Emp            = Nothing
 removeBiggest (Bind k v l r) = 
     case removeBiggest r of
         --Nothing -> Just(k, v, Bind k v l r)
-        Nothing -> Just(k, v, Emp)
+        Nothing -> Just(k, v, l)
         Just (k', v', t) -> Just (k', v', Bind k v l t)
 
 delete :: (Ord k, Eq k, Eq v) => k -> BST k v -> BST k v
